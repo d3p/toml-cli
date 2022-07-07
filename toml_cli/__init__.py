@@ -7,10 +7,11 @@ import typer
 import json
 
 app = typer.Typer(no_args_is_help=True)
+DEFAULT_TOML_FILE_NAME = "Cargo.toml"
 
 
 @app.command("get")
-def get(key: Optional[str] = typer.Argument(None), toml_path: pathlib.Path = typer.Option(pathlib.Path("config.toml"))):
+def get(key: Optional[str] = typer.Argument(None), toml_path: pathlib.Path = typer.Option(pathlib.Path(DEFAULT_TOML_FILE_NAME))):
     """Get a value from a toml file"""
     toml_part = tomlkit.parse(toml_path.read_text())
 
@@ -25,7 +26,7 @@ def get(key: Optional[str] = typer.Argument(None), toml_path: pathlib.Path = typ
 def set_(
     key: str,
     value: str,
-    toml_path: pathlib.Path = typer.Option(pathlib.Path("config.toml")),
+    toml_path: pathlib.Path = typer.Option(pathlib.Path(DEFAULT_TOML_FILE_NAME)),
     to_int: bool = typer.Option(False),
     to_float: bool = typer.Option(False),
     to_bool: bool = typer.Option(False),
@@ -39,21 +40,24 @@ def set_(
         except tomlkit.exceptions.NonExistentKey:
             typer.echo(f"Key {key} can not set", err=True)
 
+    key_tail = key.split(".")[-1]
     if to_int:
         value = int(value)
-    if to_float:
+    elif to_float:
         value = float(value)
-    if to_bool:
+    elif to_bool:
         value = value.lower() in ['true', 'yes', 'y', '1']
+    else:
+        value = tomlkit.string(value, literal=True)
 
-    toml_part[key.split(".")[-1]] = value
+    toml_part[key_tail] = value
 
     toml_path.write_text(tomlkit.dumps(toml_file))
 
 
 @app.command("add_section")
 def add_section(
-    key: str, toml_path: pathlib.Path = typer.Option(pathlib.Path("config.toml")),
+    key: str, toml_path: pathlib.Path = typer.Option(pathlib.Path(DEFAULT_TOML_FILE_NAME)),
 ):
     """Add a section with the given key"""
     toml_part = toml_file = tomlkit.parse(toml_path.read_text())
@@ -67,7 +71,7 @@ def add_section(
 
 
 @app.command("unset")
-def unset(key: str, toml_path: pathlib.Path = typer.Option(pathlib.Path("config.toml"))):
+def unset(key: str, toml_path: pathlib.Path = typer.Option(pathlib.Path(DEFAULT_TOML_FILE_NAME))):
     """Unset a value from a toml file"""
     toml_part = toml_file = tomlkit.parse(toml_path.read_text())
 
